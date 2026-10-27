@@ -1,3 +1,5 @@
+<img width="500" height="200" alt="image" src="https://github.com/user-attachments/assets/ae50737f-5116-4f60-a5a3-0fe256a4552b" />
+
 # xplint
 
 Opinionated linter for Crossplane (v1 and v2 pipeline-mode) XRDs, Compositions, Functions and rendered output. Written in Rust.
