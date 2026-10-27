@@ -1,4 +1,6 @@
-<img width="500" height="200" alt="image" src="https://github.com/user-attachments/assets/ae50737f-5116-4f60-a5a3-0fe256a4552b" />
+<p align="center">
+  <img width="500" height="200" alt="image" src="https://github.com/user-attachments/assets/ae50737f-5116-4f60-a5a3-0fe256a4552b" />
+</p>
 
 # xplint
 
