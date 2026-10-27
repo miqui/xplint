@@ -18,6 +18,11 @@ Existing tools cover other layers:
 
 xplint targets opinionated policy rules and pipeline-mode coverage. It is also a vehicle for learning Rust (serde, traits, schema walking, clap, SARIF).
 
+## Flow
+![xplint flow](docs/xplint-flow.png)
+
+*Rendered from docs/xplint-flow.drawio — open in draw.io to edit.*
+
 ## Planned CLI (not implemented)
 ```
 xplint [PATHS...]                 # lint files or directories
