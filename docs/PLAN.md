@@ -4,21 +4,20 @@ Goal: an opinionated Rust linter for Crossplane v1 and v2 (pipeline-mode) XRDs, 
 
 ## Architecture
 
-End-to-end flow diagram (editable): [xplint-flow.drawio](xplint-flow.drawio), rendered as [xplint-flow.png](xplint-flow.png).
+Numbered 1-to-8 flow diagram (editable): [xplint-flow.drawio](xplint-flow.drawio), rendered as [xplint-flow.png](xplint-flow.png).
 
 ```mermaid
-flowchart LR
-    F[YAML files / stdin] --> P[Parser: serde_yaml, multi-doc]
-    P --> M[Typed models: XRD, Composition, Function]
-    M --> E[Rule engine]
-    C[.xplint.yaml config] --> E
-    R[Core rules: on by default, impl Rule trait] --> E
-    K[Provider packs: aws, gcp, azure] -->|auto-activate by API group + kind| E
-    E --> D[Diagnostics]
-    D --> O1[Text]
-    D --> O2[JSON]
-    D --> O3[SARIF 2.1.0]
-    X[crossplane render, optional] --> P
+flowchart TD
+    S1["1 Inputs: files, dirs, stdin"] --> S2["2 Parse: serde_yaml, multi-doc"]
+    S2 --> S3["3 Typed models: XRD, Composition, Function"]
+    S3 --> S4["4 Pack router: core always, aws/gcp/azure by API group + kind"]
+    S4 --> S5["5 Rule engine: core rules on by default, any rule disabled via rules:"]
+    S5 --> S6["6 Diagnostics"]
+    S6 --> S7["7 Output: text | json | SARIF 2.1.0"]
+    S7 --> S8["8 Exit code: 0 clean, 1 errors, 2 usage/IO"]
+    CFG[".xplint.yaml + xplint-ignore comments"] -.-> S5
+    RND["crossplane render (optional, stage 5)"] -.-> S1
+    CRD["CRD-aware checks (optional, stage 5)"] -.-> S5
 ```
 
 ## Rule packs
