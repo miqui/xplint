@@ -1,0 +1,9 @@
+[package]
+name = "xplint"
+version = "0.1.0"
+edition = "2021"
+description = "Opinionated linter for Crossplane XRDs, Compositions and Functions"
+license = "MIT"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
