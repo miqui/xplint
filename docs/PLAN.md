@@ -10,13 +10,21 @@ flowchart LR
     P --> M[Typed models: XRD, Composition, Function]
     M --> E[Rule engine]
     C[.xplint.yaml config] --> E
-    R[Rules: impl Rule trait] --> E
+    R[Core rules: impl Rule trait] --> E
+    K[Provider packs: aws, gcp, azure] -->|auto-activate by apiVersion/kind| E
     E --> D[Diagnostics]
     D --> O1[Text]
     D --> O2[JSON]
     D --> O3[SARIF 2.1.0]
     X[crossplane render, optional] --> P
 ```
+
+## Rule packs
+- Core rules are provider-neutral and always on.
+- Provider packs (`aws`, `gcp`, `azure`) are compiled into the single binary and auto-activate when a document's apiVersion/kind matches (e.g. `rds.aws.upbound.io`). Zero config by default.
+- Override in `.xplint.yaml`: `packs: { aws: on, gcp: off }`, plus per-rule severity.
+- Rationale: no rebuilds, one binary for every team, simple CI. Cargo features are reserved for heavy optional parts (Ratatui TUI, stage 6).
+- Roadmap: CRD-aware schema checks that load provider CRDs (like `crossplane beta validate`) for field-level checks on any provider without hand-coded rules (stage 5 optional).
 
 ## Stage 0: Scaffold + CI
 - Goal: compiling bin crate with CI.
@@ -32,13 +40,13 @@ flowchart LR
 
 ## Stage 2: Rule trait, engine, diagnostics
 - Goal: pluggable rules producing located diagnostics.
-- Deliverables: `trait Rule { id, severity, check(&Doc) -> Vec<Diagnostic> }`; `Diagnostic { rule, severity, file, line, path, message }`; line resolved from a YAML path; engine running all rules; first four rules (catalog below).
+- Deliverables: `trait Rule { id, severity, check(&Doc) -> Vec<Diagnostic> }`; `Diagnostic { rule, severity, file, line, path, message }`; line resolved from a YAML path; engine running all rules with pack-aware rule registration (each rule tagged core or a pack); first four rules (catalog below).
 - Acceptance: each rule has pass and fail fixtures; diagnostics sorted by file/line; patch-path rule resolves paths against the XRD OpenAPI schema.
 - Rust: traits and trait objects, `Box<dyn Rule>`, lifetimes on borrowed docs, schema tree walking, iterators.
 
 ## Stage 3: CLI, exit codes, config
 - Goal: usable command line.
-- Deliverables: clap subcommands/args (`xplint [PATHS]`, `--format text|json`, `--config`); exit codes (0 clean, 1 findings at error level, 2 usage/IO error); `.xplint.yaml` with enable/disable and severity override; inline ignore comments (`# xplint-ignore: rule-id`).
+- Deliverables: clap subcommands/args (`xplint [PATHS]`, `--format text|json`, `--config`); exit codes (0 clean, 1 findings at error level, 2 usage/IO error); `.xplint.yaml` with enable/disable and severity override; inline ignore comments (`# xplint-ignore: rule-id`); pack mechanism (`packs:` map, auto-activation by apiVersion/kind, per-rule severity).
 - Acceptance: directory recursion; exit codes tested with integration tests; ignores honored per line/document.
 - Rust: clap derive, `ValueEnum`, `std::process::ExitCode`, `walkdir`-style traversal, integration tests in `tests/`.
 
@@ -50,7 +58,7 @@ flowchart LR
 
 ## Stage 5 (optional): `crossplane render` integration
 - Goal: lint rendered managed resources.
-- Deliverables: `--render` shells out to `crossplane render`; policy rules on output (RDS deletion protection, no public ingress).
+- Deliverables: `--render` shells out to `crossplane render`; policy rules on output (RDS deletion protection, no public ingress); optional: load provider CRDs for CRD-aware schema checks (field-level, any provider).
 - Acceptance: skipped with a clear message if `crossplane` missing; rules fire on fixtures.
 - Rust: `std::process::Command`, error handling across processes, feature flags.
 
@@ -61,9 +69,9 @@ flowchart LR
 - Rust: event loops, state machines, cargo features.
 
 ## Rule catalog (planned)
-- `xrd-no-required-fields` (stage 2): XRD schema should not mark spec fields `required` without a default; warn.
-- `composition-missing-function` (stage 2): pipeline step references a function not declared or not found; error.
-- `composition-missing-deletion-policy` (stage 2): composed managed resources lack explicit `deletionPolicy`; warn.
-- `patch-path-not-in-xrd` (stage 2): patch `fromFieldPath`/`toFieldPath` not in XRD schema; error.
-- `rendered-rds-deletion-protection` (stage 5): RDS instance without `deletionProtection: true`; error.
-- `rendered-no-public-ingress` (stage 5): security group ingress from `0.0.0.0/0`; error.
+- `xrd-required-without-default` (core, stage 2): XRD spec field listed in `required` without a schema default; warn.
+- `composition-missing-function` (core, stage 2): pipeline step references a function not declared or not found; error.
+- `composition-missing-deletion-policy` (core, stage 2): composed managed resources lack explicit `deletionPolicy`; warn. Note: `deletionPolicy` vs `managementPolicies` behavior differs across Crossplane v1/v2 providers; verify against provider docs before implementing.
+- `patch-path-not-in-xrd` (core, stage 2): patch `fromFieldPath`/`toFieldPath` not in XRD schema; error.
+- `aws-rds-deletion-protection` (pack: aws, stage 5, rendered output): RDS instance without `deletionProtection: true`; error.
+- `aws-no-public-ingress` (pack: aws, stage 5, rendered output): security group ingress from `0.0.0.0/0`; error.
