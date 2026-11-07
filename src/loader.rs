@@ -1,6 +1,7 @@
 //! Multi-document YAML loader that keeps document indexes and line offsets.
 
 use crate::model::Resource;
+use crate::yamlpath::{LineIndex, YamlPath};
 use serde_yaml_ng::Value;
 use std::path::{Path, PathBuf};
 
@@ -12,6 +13,22 @@ pub struct Document {
     /// 1-based line in the file where this document's text begins.
     pub start_line: usize,
     pub resource: Resource,
+    /// Path-to-line index of this document's text.
+    pub lines: LineIndex,
+}
+
+impl Document {
+    /// 1-based line in the file for a YAML path (nearest ancestor if absent).
+    pub fn line_of(&self, path: &YamlPath) -> usize {
+        self.start_line + self.lines.resolve(path)
+    }
+}
+
+/// A document together with the file it came from.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SourceDoc {
+    pub file: PathBuf,
+    pub document: Document,
 }
 
 /// Raw text chunk of a multi-document stream.
@@ -111,6 +128,7 @@ pub fn load_str(file: &Path, text: &str) -> Result<Vec<Document>, LoadError> {
                 index: c.index,
                 start_line: c.start_line,
                 resource,
+                lines: LineIndex::build(c.text),
             })
         })
         .collect()
@@ -123,6 +141,44 @@ pub fn load_file(path: &Path) -> Result<Vec<Document>, LoadError> {
         source,
     })?;
     load_str(path, &text)
+}
+
+/// Load one file, or every `.yaml`/`.yml` file under a directory (recursive,
+/// sorted by path so output is deterministic).
+pub fn load_tree(path: &Path) -> Result<Vec<SourceDoc>, LoadError> {
+    let mut files = Vec::new();
+    if path.is_dir() {
+        collect_files(path, &mut files)?;
+    } else {
+        files.push(path.to_path_buf());
+    }
+    files.sort();
+    let mut out = Vec::new();
+    for file in files {
+        for document in load_file(&file)? {
+            out.push(SourceDoc {
+                file: file.clone(),
+                document,
+            });
+        }
+    }
+    Ok(out)
+}
+
+fn collect_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), LoadError> {
+    let io = |source| LoadError::Io {
+        file: dir.to_path_buf(),
+        source,
+    };
+    for entry in std::fs::read_dir(dir).map_err(io)? {
+        let p = entry.map_err(io)?.path();
+        if p.is_dir() {
+            collect_files(&p, out)?;
+        } else if matches!(p.extension().and_then(|e| e.to_str()), Some("yaml" | "yml")) {
+            out.push(p);
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

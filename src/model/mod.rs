@@ -75,6 +75,16 @@ impl Resource {
         }
     }
 
+    /// `apiVersion` string, or empty when absent.
+    pub fn api_version(&self) -> &str {
+        match self {
+            Resource::Xrd(x) => &x.api_version,
+            Resource::Composition(c) => &c.api_version,
+            Resource::Function(f) => &f.api_version,
+            Resource::Generic(v) => v.get("apiVersion").and_then(Value::as_str).unwrap_or(""),
+        }
+    }
+
     /// Human-readable kind name.
     pub fn kind_name(&self) -> &str {
         match self {
