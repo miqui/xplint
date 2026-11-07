@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "xplint",
+          "version": "@VERSION@",
+          "informationUri": "https://github.com/miqui/xplint",
+          "rules": [
+            {
+              "id": "xrd-required-without-default",
+              "shortDescription": {
+                "text": "XRD spec field listed in required has no schema default"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "composition-missing-function",
+              "shortDescription": {
+                "text": "Pipeline step references a function that no loaded Function declares"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            },
+            {
+              "id": "composition-missing-deletion-policy",
+              "shortDescription": {
+                "text": "Composed resource sets neither deletionPolicy nor managementPolicies"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "patch-path-not-in-xrd",
+              "shortDescription": {
+                "text": "Patch fromFieldPath/toFieldPath is not defined in the XRD schema"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            }
+          ]
+        }
+      },
+      "results": []
+    }
+  ]
+}

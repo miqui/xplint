@@ -108,7 +108,6 @@ fn malformed_yaml_exits_2() {
 fn usage_errors_exit_2() {
     let d = scratch("usage");
     assert_eq!(code(&xplint(&d, &["--format", "xml"])), 2);
-    assert_eq!(code(&xplint(&d, &["--format", "sarif"])), 2);
     assert_eq!(code(&xplint(&d, &["--bogus"])), 2);
 }
 

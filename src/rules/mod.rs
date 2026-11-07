@@ -126,6 +126,8 @@ impl<'a> Doc<'a> {
 /// A lint rule.
 pub trait Rule {
     fn id(&self) -> &'static str;
+    /// One-line description of what the rule checks (SARIF `shortDescription`).
+    fn description(&self) -> &'static str;
     fn severity(&self) -> Severity;
     /// Pack this rule is tagged with; defaults to core.
     fn pack(&self) -> Pack {
@@ -136,6 +138,15 @@ pub trait Rule {
         &[]
     }
     fn check(&self, doc: &Doc) -> Vec<Diagnostic>;
+}
+
+/// Static metadata about a rule, for reporters (e.g. SARIF `tool.driver.rules`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RuleMeta {
+    pub id: &'static str,
+    pub description: &'static str,
+    /// Default severity (before config overrides).
+    pub severity: Severity,
 }
 
 /// Runs registered rules over a corpus.
@@ -169,6 +180,17 @@ impl Engine {
         if pack != Pack::Core {
             self.disabled_packs.insert(pack);
         }
+    }
+
+    /// Metadata of every registered rule, in registration order.
+    pub fn rule_metadata(&self) -> Vec<RuleMeta> {
+        self.rules()
+            .map(|r| RuleMeta {
+                id: r.id(),
+                description: r.description(),
+                severity: r.severity(),
+            })
+            .collect()
     }
 
     pub fn rules(&self) -> impl Iterator<Item = &dyn Rule> {
@@ -226,6 +248,9 @@ mod tests {
     impl Rule for FakeAws {
         fn id(&self) -> &'static str {
             "fake-aws"
+        }
+        fn description(&self) -> &'static str {
+            "fake"
         }
         fn severity(&self) -> Severity {
             Severity::Error
@@ -311,6 +336,9 @@ mod tests {
         struct Any;
         impl Rule for Any {
             fn id(&self) -> &'static str {
+                "any"
+            }
+            fn description(&self) -> &'static str {
                 "any"
             }
             fn severity(&self) -> Severity {

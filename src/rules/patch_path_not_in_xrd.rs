@@ -44,6 +44,9 @@ impl Rule for PatchPathNotInXrd {
     fn id(&self) -> &'static str {
         ID
     }
+    fn description(&self) -> &'static str {
+        "Patch fromFieldPath/toFieldPath is not defined in the XRD schema"
+    }
     fn severity(&self) -> Severity {
         Severity::Error
     }

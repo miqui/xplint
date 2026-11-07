@@ -20,6 +20,9 @@ impl Rule for CompositionMissingDeletionPolicy {
     fn id(&self) -> &'static str {
         ID
     }
+    fn description(&self) -> &'static str {
+        "Composed resource sets neither deletionPolicy nor managementPolicies"
+    }
     fn severity(&self) -> Severity {
         Severity::Warning
     }

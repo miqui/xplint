@@ -18,6 +18,9 @@ impl Rule for CompositionMissingFunction {
     fn id(&self) -> &'static str {
         ID
     }
+    fn description(&self) -> &'static str {
+        "Pipeline step references a function that no loaded Function declares"
+    }
     fn severity(&self) -> Severity {
         Severity::Error
     }

@@ -5,6 +5,7 @@ use xplint::rules::Engine;
 use xplint::run::{
     has_errors, lint_corpus, load_config, load_paths, render_json, render_text, RunError,
 };
+use xplint::sarif;
 
 /// Opinionated linter for Crossplane XRDs, Compositions and Functions.
 ///
@@ -30,6 +31,7 @@ struct Cli {
 enum Format {
     Text,
     Json,
+    Sarif,
 }
 
 /// Returns whether any error-level finding was reported.
@@ -41,10 +43,13 @@ fn run(cli: Cli) -> Result<bool, RunError> {
         cli.paths
     };
     let corpus = load_paths(&paths)?;
-    let diagnostics = lint_corpus(Engine::with_core(), config.as_ref(), &corpus)?;
+    let engine = Engine::with_core();
+    let rules = engine.rule_metadata();
+    let diagnostics = lint_corpus(engine, config.as_ref(), &corpus)?;
     let rendered = match cli.format {
         Format::Text => render_text(&diagnostics),
         Format::Json => render_json(&diagnostics),
+        Format::Sarif => sarif::render(&diagnostics, &rules),
     };
     print!("{rendered}");
     Ok(has_errors(&diagnostics))
@@ -82,7 +87,9 @@ mod tests {
     }
 
     #[test]
-    fn sarif_is_not_a_format_yet() {
-        assert!(Cli::try_parse_from(["xplint", "--format", "sarif"]).is_err());
+    fn parses_sarif_format() {
+        let cli = Cli::try_parse_from(["xplint", "--format", "sarif"]).unwrap();
+        assert!(matches!(cli.format, Format::Sarif));
+        assert!(Cli::try_parse_from(["xplint", "--format", "xml"]).is_err());
     }
 }
