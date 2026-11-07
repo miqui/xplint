@@ -38,6 +38,13 @@ impl Pack {
         }
     }
 
+    /// Parse a config pack name (`core`, `aws`, `gcp`, `azure`).
+    pub fn from_name(name: &str) -> Option<Pack> {
+        [Pack::Core, Pack::Aws, Pack::Gcp, Pack::Azure]
+            .into_iter()
+            .find(|p| p.name() == name)
+    }
+
     /// Does an API group (version-less) belong to this pack's provider?
     /// Matching ignores the version, so `v1beta1` -> `v1beta2` keeps a pack active.
     pub fn matches_group(&self, group: &str) -> bool {

@@ -6,7 +6,7 @@
 
 Opinionated linter for Crossplane (v1 and v2 pipeline-mode) XRDs, Compositions, Functions and rendered output. Written in Rust.
 
-**Status: Stage 2 done.** The library parses multi-document YAML into typed models (`xplint::model`, `xplint::loader`) and runs lint rules over them (`xplint::rules::Engine`), producing located diagnostics sorted by file and line. The binary is still a scaffold; the CLI arrives in Stage 3.
+**Status: Stage 3 done.** The `xplint` binary lints files and directories, supports `--format text|json`, `.xplint.yaml` config, inline ignores and exit codes. SARIF arrives in Stage 4.
 
 ## Why
 Existing tools cover other layers:
@@ -26,7 +26,7 @@ xplint targets opinionated policy rules and pipeline-mode coverage. It is also a
 *Rendered from docs/xplint-flow.drawio — open in draw.io to edit.*
 
 ## Rules
-Core rules are provider-neutral and always on. Provider packs (`aws`, `gcp`, `azure`) auto-activate per document by API group (any version) plus the rule's kind list; the mechanism is implemented and unit-tested, but no provider rules exist yet (stage 5).
+Core rules are provider-neutral and always on. Provider packs (`aws`, `gcp`, `azure`) auto-activate per document by API group (any version) plus the rule's kind list; the mechanism is implemented and tested (with a test-registered rule, see `tests/packs.rs`), but no provider rules ship yet (stage 5).
 
 | Rule | Pack | Severity | Checks |
 |---|---|---|---|
@@ -37,38 +37,93 @@ Core rules are provider-neutral and always on. Provider packs (`aws`, `gcp`, `az
 
 See [examples/](examples/README.md) for sets that trigger each rule.
 
-## Planned CLI (not implemented)
+## Usage
 ```
-xplint [PATHS...]                 # lint files or directories
-xplint --format json|sarif|text
-xplint --config .xplint.yaml
-xplint --render                   # lint `crossplane render` output (stage 5)
+xplint [PATHS...]                    # files or directories (recursive .yaml/.yml); default: .
+xplint --format text|json            # default: text
+xplint --config path/to/config.yaml  # default: ./.xplint.yaml if present
 ```
-Exit codes: 0 clean, 1 findings, 2 usage/IO error.
+All paths are loaded as one corpus, so Functions and XRDs are resolved across files.
+`--format sarif` and `--render` arrive in later stages.
+
+Text output is one `file:line: severity [rule] message (yaml.path)` per finding, sorted by file and line, then a `N error(s), M warning(s)` summary (nothing is printed when clean). JSON output is an array of `{rule, severity, file, line, path, message}` objects (`[]` when clean).
+
+### Exit codes
+| Code | Meaning |
+|---|---|
+| 0 | clean, or warnings only |
+| 1 | at least one finding at error level (after config overrides and ignores) |
+| 2 | usage error, unreadable/malformed YAML, or invalid config (unknown rule or pack, bad value, missing `--config` file); message on stderr |
+
+### Config: `.xplint.yaml`
+```yaml
+rules:                       # any rule, core or pack
+  xrd-required-without-default: off        # disable
+  composition-missing-function: warning    # override severity (warning | error)
+packs:                       # whole packs only: aws, gcp, azure
+  aws: off                   # `on` is the default and does not force activation
+```
+- Packs auto-activate per document by API group (any version) and the rule's kinds, e.g. `rds.aws.upbound.io/v1beta1` `Instance` activates `aws`. `off` disables the pack; `on` never applies pack rules to documents outside the pack's groups.
+- `core` is not a pack toggle: `packs: {core: off}` is an error. Disable core rules individually under `rules:`.
+- Unknown rule or pack names, unknown top-level keys and bad values exit 2 with a message naming the file and the offending name.
+- `on`/`off` and YAML booleans are accepted for packs; `false` also works for a rule.
+
+### Inline ignores
+`# xplint-ignore: rule-a, rule-b`
+- trailing on a line: suppresses findings reported on that line;
+- on its own line: suppresses findings reported on the next line;
+- in a document's header (comment lines before its first content line, e.g. right after `---`): suppresses those rules for that whole document only.
+
+The pack mechanism is exercised in `tests/packs.rs` with a test-registered AWS rule, since no AWS rules ship before Stage 5.
 
 ## Run manually
-The CLI is Stage 3. Until then, a minimal throwaway harness (a separate crate depending on `xplint` by path, not committed) loaded `examples/` with `xplint::loader::load_tree` and printed `Engine::with_core().run(..)`. Rust 1.98.0:
+Commands below were run from the repo root with Rust 1.98.0 (output trimmed where noted).
 
 ```
 $ cargo fmt --check && cargo clippy --all-targets --locked -- -D warnings
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.11s
 
 $ cargo test --locked
-test result: ok. 22 passed; 0 failed  (unit: model, loader, yamlpath, rules/engine/packs)
-test result: ok. 1 passed; 0 failed   (bin)
-test result: ok. 1 passed; 0 failed   (tests/examples.rs)
-test result: ok. 8 passed; 0 failed   (tests/loader.rs)
-test result: ok. 7 passed; 0 failed   (tests/rules.rs)
+test result: ok. 31 passed; 0 failed   (unit: config, ignore, model, loader, yamlpath, rules/engine/packs)
+test result: ok. 3 passed; 0 failed    (bin: clap definition)
+test result: ok. 21 passed; 0 failed   (tests/cli.rs)
+test result: ok. 1 passed; 0 failed    (tests/examples.rs)
+test result: ok. 8 passed; 0 failed    (tests/loader.rs)
+test result: ok. 4 passed; 0 failed    (tests/packs.rs)
+test result: ok. 7 passed; 0 failed    (tests/rules.rs)
 
-$ harness examples
+$ target/debug/xplint examples; echo "exit=$?"
 examples/violations/missing-deletion-policy/composition.yaml:22: warning [composition-missing-deletion-policy] composed resource 'bucket' sets neither deletionPolicy nor managementPolicies (spec.pipeline[0].input.resources[0].base.spec)
 examples/violations/missing-function/composition.yaml:20: error [composition-missing-function] step 'patch-and-transform' references function 'function-not-installed' which is not declared by any loaded Function (spec.pipeline[0].functionRef.name)
 examples/violations/patch-path-not-in-xrd/database.yaml:56: error [patch-path-not-in-xrd] path 'spec.sizee' is not defined in the XRD schema (spec.pipeline[0].input.resources[0].patches[0].fromFieldPath)
 examples/violations/patch-path-not-in-xrd/database.yaml:60: error [patch-path-not-in-xrd] path 'status.endpoint' is not defined in the XRD schema (spec.pipeline[0].input.resources[0].patches[1].toFieldPath)
 examples/violations/required-without-default/xrd.yaml:22: warning [xrd-required-without-default] field 'spec.region' is required but has no default (spec.versions[0].schema.openAPIV3Schema.properties.spec.required[1])
+3 error(s), 2 warning(s)
+exit=1
 
-$ harness examples/clean; echo $?
-0
+$ target/debug/xplint examples/clean; echo "exit=$?"
+exit=0
+
+$ target/debug/xplint examples/violations/missing-deletion-policy examples/clean; echo "exit=$?"
+examples/violations/missing-deletion-policy/composition.yaml:22: warning [composition-missing-deletion-policy] composed resource 'bucket' sets neither deletionPolicy nor managementPolicies (spec.pipeline[0].input.resources[0].base.spec)
+0 error(s), 1 warning(s)
+exit=0
+
+$ target/debug/xplint nope.yaml; echo "exit=$?"
+xplint: error: nope.yaml: No such file or directory (os error 2)
+exit=2
+
+$ printf 'packs:\n  oracle: off\n' > $TMPDIR/c.yaml && target/debug/xplint examples --config $TMPDIR/c.yaml; echo "exit=$?"
+xplint: error: /var/folders/yd/mjk_203n5gdg1788hgwbxvvw0000gn/T//c.yaml: unknown pack `oracle` (known packs: aws, gcp, azure)
+exit=2
+
+$ printf 'rules:\n  patch-path-not-in-xrd: warning\n  composition-missing-function: off\n' > $TMPDIR/d.yaml && target/debug/xplint examples --config $TMPDIR/d.yaml; echo "exit=$?"
+examples/violations/missing-deletion-policy/composition.yaml:22: warning [composition-missing-deletion-policy] composed resource 'bucket' sets neither deletionPolicy nor managementPolicies (spec.pipeline[0].input.resources[0].base.spec)
+examples/violations/patch-path-not-in-xrd/database.yaml:56: warning [patch-path-not-in-xrd] path 'spec.sizee' is not defined in the XRD schema (spec.pipeline[0].input.resources[0].patches[0].fromFieldPath)
+examples/violations/patch-path-not-in-xrd/database.yaml:60: warning [patch-path-not-in-xrd] path 'status.endpoint' is not defined in the XRD schema (spec.pipeline[0].input.resources[0].patches[1].toFieldPath)
+examples/violations/required-without-default/xrd.yaml:22: warning [xrd-required-without-default] field 'spec.region' is required but has no default (spec.versions[0].schema.openAPIV3Schema.properties.spec.required[1])
+0 error(s), 4 warning(s)
+exit=0
 ```
 
 ## Roadmap
