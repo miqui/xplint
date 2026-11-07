@@ -17,6 +17,18 @@ across every loaded file), so names are unique per set.
 | `violations/patch-path-not-in-xrd/database.yaml` | `patch-path-not-in-xrd` | error | 56 | `fromFieldPath: spec.sizee` is not in the XRD schema |
 | `violations/patch-path-not-in-xrd/database.yaml` | `patch-path-not-in-xrd` | error | 60 | `toFieldPath: status.endpoint` (on the composite) is not in the XRD schema |
 
+Try it (`cargo build` first, or use `cargo run --`):
+
+```
+xplint examples/clean        # exit 0, no output
+xplint examples              # exit 1: 3 errors, 2 warnings (the table above)
+xplint examples --format json
+```
+
+To see the other CLI features, copy a set and add a `.xplint.yaml`
+(`rules: {composition-missing-function: off}`) or an inline
+`# xplint-ignore: composition-missing-function` comment; see the main README.
+
 Notes:
 - `managementPolicies` set explicitly counts as satisfying
   `composition-missing-deletion-policy` (see the rule's docs in the source).
