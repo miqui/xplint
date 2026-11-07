@@ -1,0 +1,24 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: databases.example.org
+spec:
+  scope: Namespaced
+  group: example.org
+  names:
+    kind: Database
+    plural: databases
+  versions:
+    - name: v1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                size:
+                  type: string
+                  default: small

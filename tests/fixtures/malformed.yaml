@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata: [unclosed
+spec:
+  package: x

@@ -36,7 +36,8 @@ flowchart TD
 
 ## Stage 1: Parse YAML into typed models
 - Goal: load multi-document YAML into typed XRD/Composition/Function models.
-- Deliverables: serde/serde_yaml deps; `model` module; multi-doc splitter keeping document index and line offsets; unknown kinds kept as generic docs; fixtures under `tests/fixtures`.
+- Status: done (PR `stage1-models`). Uses `serde_yaml_ng` (maintained fork) because `serde_yaml` is archived/deprecated; the diagram label still says serde_yaml.
+- Deliverables: serde/serde_yaml_ng deps; `model` module; multi-doc splitter keeping document index and line offsets; unknown kinds kept as generic docs; fixtures under `tests/fixtures`.
 - Acceptance: v1 and v2 XRDs, pipeline Compositions and Functions parse; malformed YAML gives an error with file and document number; round-trip tests.
 - Rust: serde derive, `Option`, enums with `#[serde(tag)]`/untagged, `Result` and custom error types, `serde_yaml::Value`.
 
