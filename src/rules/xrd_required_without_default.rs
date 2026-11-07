@@ -14,6 +14,9 @@ impl Rule for XrdRequiredWithoutDefault {
     fn id(&self) -> &'static str {
         ID
     }
+    fn description(&self) -> &'static str {
+        "XRD spec field listed in required has no schema default"
+    }
     fn severity(&self) -> Severity {
         Severity::Warning
     }

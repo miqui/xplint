@@ -55,6 +55,7 @@ flowchart TD
 - Rust: clap derive, `ValueEnum`, `std::process::ExitCode`, `walkdir`-style traversal, integration tests in `tests/`.
 
 ## Stage 4: SARIF 2.1.0
+- Status: done (PR `stage4-sarif`). `--format sarif` (`src/sarif.rs`), `Rule::description` + `Engine::rule_metadata` feed `tool.driver.rules`. Output is validated against the vendored official schema in tests (`jsonschema` dev-dependency) with snapshots; the "uploads in a test repo" acceptance is NOT done (documented in `docs/sarif-upload.md` only, never run). Pack/SARIF tests are parametrized over aws/gcp/azure and use static fixtures only (no cloud access).
 - Goal: GitHub code scanning output.
 - Deliverables: `--format sarif`; rule metadata in `tool.driver.rules`; example workflow upload step.
 - Acceptance: output validates against the SARIF 2.1.0 schema; uploads in a test repo.
