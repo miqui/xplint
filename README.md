@@ -6,7 +6,7 @@
 
 Opinionated linter for Crossplane (v1 and v2 pipeline-mode) XRDs, Compositions, Functions and rendered output. Written in Rust.
 
-**Status: planning / scaffold.** The binary only prints help and version; no rules exist yet.
+**Status: Stage 1 done.** The library parses multi-document YAML into typed XRD (v1/v2), pipeline Composition and Function models (`xplint::model`, `xplint::loader`); other kinds are kept as generic documents. The binary still only prints help and version; no rules or CLI wiring yet.
 
 ## Why
 Existing tools cover other layers:
@@ -38,10 +38,13 @@ Exit codes: 0 clean, 1 findings, 2 usage/IO error.
 Commands run in this repo (Rust 1.98.0):
 
 ```
+$ cargo fmt --check && cargo clippy --all-targets --locked -- -D warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s
+
 $ cargo test --locked
-running 1 test
-test tests::greeting_mentions_name ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out  (unit: model, loader)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out   (bin)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out   (tests/loader.rs: fixtures, round trip, malformed YAML)
 
 $ cargo run -q -- --help
 Opinionated linter for Crossplane XRDs, Compositions and Functions

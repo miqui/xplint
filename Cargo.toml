@@ -7,3 +7,6 @@ license = "MIT"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_yaml_ng = "0.10.0"
+thiserror = "2.0.21"
