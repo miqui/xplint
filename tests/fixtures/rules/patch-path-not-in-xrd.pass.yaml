@@ -1,0 +1,64 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xdatabases.example.org
+spec:
+  group: example.org
+  names:
+    kind: XDatabase
+    plural: xdatabases
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - size
+              properties:
+                size:
+                  type: string
+                  default: small
+                tags:
+                  type: object
+                  additionalProperties:
+                    type: string
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: db
+spec:
+  compositeTypeRef:
+    apiVersion: example.org/v1alpha1
+    kind: XDatabase
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: bucket
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: Bucket
+              spec:
+                deletionPolicy: Orphan
+                forProvider:
+                  region: us-east-1
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.size
+                toFieldPath: spec.forProvider.tags.size
+              - fromFieldPath: metadata.labels[tier]
+                toFieldPath: spec.forProvider.tags.tier
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: spec.tags.arn

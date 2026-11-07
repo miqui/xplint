@@ -1,0 +1,79 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xdatabases.clean.example.org
+spec:
+  group: clean.example.org
+  names:
+    kind: XDatabase
+    plural: xdatabases
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - size
+              properties:
+                size:
+                  type: string
+                  default: small
+                tags:
+                  type: object
+                  additionalProperties:
+                    type: string
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-patch-and-transform
+spec:
+  package: xpkg.crossplane.io/crossplane-contrib/function-patch-and-transform:v0.8.2
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-clean
+spec:
+  compositeTypeRef:
+    apiVersion: clean.example.org/v1alpha1
+    kind: XDatabase
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: bucket
+            base:
+              apiVersion: s3.aws.upbound.io/v1beta1
+              kind: Bucket
+              spec:
+                deletionPolicy: Orphan
+                forProvider:
+                  region: us-east-1
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.size
+                toFieldPath: spec.forProvider.tags.size
+              - fromFieldPath: metadata.labels[tier]
+                toFieldPath: spec.forProvider.tags.tier
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.arn
+                toFieldPath: spec.tags.arn
+          - name: queue
+            base:
+              apiVersion: sqs.aws.upbound.io/v1beta1
+              kind: Queue
+              spec:
+                managementPolicies: ["Observe"]
+                forProvider:
+                  region: us-east-1
